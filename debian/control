@@ -33,7 +33,7 @@ Description: high-quality block-sorting file compressor library - runtime
 
 Package: libbz2-dev
 Priority: optional
-Section: libdevel
+Section: host-tools
 Architecture: any
 Depends: libbz2-1.0 (=${Source-Version})
 Description: high-quality block-sorting file compressor library - development
@@ -57,7 +57,7 @@ Description: high-quality block-sorting file compressor library - development
 
 Package: bzip2
 Priority: optional
-Section: utils
+Section: core
 Architecture: any
 Depends: libbz2-1.0 (=${Source-Version})
 Description: high-quality block-sorting file compressor - utilities
