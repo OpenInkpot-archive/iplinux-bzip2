@@ -1,0 +1,209 @@
+#!/usr/bin/make -f
+# debian/rules file for building the Debian GNU/Linux package bzip2.
+# Copyright (C) 1999, 2000, 2001, 2002 Philippe Troin
+# Copyright (C) 2004-2006 Anibal Monsalve Salazar <anibal@debian.org>
+
+SHELL = /bin/bash
+package = bzip2
+
+testdir=test -x debian/rules && test -f bzip2.c
+testroot=test "`id -nu`" = root
+
+DEB_BUILD_GNU_TYPE	:= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_GNU_TYPE	:= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_HOST_ARCH		:= $(shell dpkg-architecture -qDEB_HOST_ARCH)
+DEB_HOST_ARCH_OS	:= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
+
+DEBCFLAGS:=
+DEBSTRIP:=strip
+WGET=wget
+ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
+DEBCFLAGS += -g
+endif
+ifneq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+DEBSTRIP:=:
+endif
+
+DEBVERSION:=$(shell head -n 1 debian/changelog \
+		    | sed -e 's/^[^(]*(\([^)]*\)).*/\1/')
+UPVERSION:=$(shell echo $(DEBVERSION) | sed -e 's/-[0-9.]*$$//')
+
+patch: patch-stamp
+patch-stamp:
+	QUILT_PATCHES=$(CURDIR)/debian/patches quilt push -a
+	touch $@
+
+unpatch:
+	-QUILT_PATCHES=$(CURDIR)/debian/patches quilt pop -a
+	rm -f patch-stamp
+	
+build: patch-stamp build-stamp
+build-stamp:
+	$(testdir)
+	# Add here commands to compile the package.
+	$(MAKE) DEBCFLAGS="$(DEBCFLAGS)"
+ifeq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
+	$(MAKE) DEBCFLAGS="$(DEBCFLAGS)" test
+endif
+	makeinfo -o bzip2.info manual.texi
+	cat debian/copyright.in LICENSE > debian/copyright
+	touch build-stamp
+
+# requires: docbook-xml docbook2x
+manual.texi: manual.xml
+	docbook2x-texi --to-stdout manual.xml | \
+	awk '/^@direntry/,/^@end direntry/ {if ($$0 !~ /@/) {print "* Bzip2: (bzip2).               A program and library for data compression."; next}} {print}' > manual.texi
+
+
+clean: unpatch
+	$(testdir)
+	rm -f build*-stamp
+	-$(MAKE) clean
+	rm -rf 32 64
+	rm -f debian/substvars debian/files debian/copyright bzip2.info*
+	rm -fr debian/tmp*
+	find . -name "*~" -print0 | xargs -r0 rm -f
+
+# Build architecture-independent files here.
+binary-indep: build
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build
+	$(testdir)
+	$(testroot)
+	rm -fr debian/tmp*
+	install -d debian/tmp/usr
+
+	$(MAKE) PREFIX=`pwd`/debian/tmp install
+
+	### Split
+
+	# Development package
+	install -d debian/tmp-dev/usr/lib
+	rm debian/tmp/lib/libbz2.so
+	ln -s /lib/libbz2.so.1.0 debian/tmp-dev/usr/lib/libbz2.so
+	mv debian/tmp/lib/libbz2.a debian/tmp-dev/usr/lib/
+	mv debian/tmp/include debian/tmp-dev/usr/include
+	
+
+	# Library package
+	install -d debian/tmp-lib/lib
+	for i in $$(ls debian/tmp/lib/libbz2.so*); do \
+	  (set -x; echo $$i; mv $$i debian/tmp-lib/lib/); \
+	done
+	ln -s libbz2.so.1.0.3 debian/tmp-lib/lib/libbz2.so.1
+	chmod -x debian/tmp-lib/lib/*
+
+	# Binary package
+	install -d debian/tmp-run
+	mv debian/tmp/bin debian/tmp-run/bin
+ifdef ($(INSTALL_DOCS),yes)
+	install -d debian/tmp-run/usr/share
+	mv debian/tmp/man debian/tmp-run/usr/share/man
+endif
+
+	### Check the install
+	#test "$$(find debian/tmp ! -type d -print | wc -l)" -eq 0
+	rm -fr debian/tmp
+
+	### Finalize documentation
+
+ifdef ($(INSTALL_DOCS),yes)
+	# Man pages
+	gzip -v9 debian/tmp-run/usr/share/man/man1/*.1
+	( cd debian/tmp-run/usr/share/man/man1 && \
+	  for i in bunzip2 bzcat bzip2recover; do \
+	    ln -s bzip2.1.gz $$i.1.gz; \
+	  done )
+
+	# Info
+	install -d debian/tmp-run/usr/share/info
+	cp bzip2.info* debian/tmp-run/usr/share/info/
+	gzip -v9 debian/tmp-run/usr/share/info/*
+
+	# Other docs in lib package
+#	install -d debian/tmp-run/usr/share/doc/bzip2
+#	cp *.ps *.html *.texi debian/tmp-run/usr/share/doc/bzip2
+#	gzip -v9 debian/tmp-run/usr/share/doc/bzip2/*.{ps,texi}
+#	cp CHANGES debian/tmp-run/usr/share/doc/bzip2/changelog
+#	cp debian/changelog \
+#	  debian/tmp-run/usr/share/doc/bzip2/changelog.Debian
+#	gzip -v9 debian/tmp-run/usr/share/doc/bzip2/changelog*
+#	cp debian/copyright debian/tmp-run/usr/share/doc/bzip2/
+
+	# Doc-base support
+#	install -d debian/tmp-run/usr/share/doc-base
+#	cp debian/docbase debian/tmp-run/usr/share/doc-base/bzip2
+
+	# Library package
+#	install -d debian/tmp-lib/usr/share/doc/libbz2-1.0
+#	cp debian/copyright debian/tmp-lib/usr/share/doc/libbz2-1.0/
+#	cp CHANGES debian/tmp-lib/usr/share/doc/libbz2-1.0/changelog
+#	cp debian/changelog \
+#	  debian/tmp-lib/usr/share/doc/libbz2-1.0/changelog.Debian
+#	gzip -v9 debian/tmp-lib/usr/share/doc/libbz2-1.0/changelog*
+
+	# Other packages point to libbz2-1.0
+#	install -d debian/tmp-dev/usr/share/doc
+#	ln -s libbz2-1.0 debian/tmp-dev/usr/share/doc/libbz2-dev
+endif
+
+	### Package finalize
+
+	# Stripping
+	for i in debian/tmp-run/bin/*; \
+	do \
+	  if head -n 1 $$i | grep -vq '^#!'; \
+	  then \
+	    (set -x; $(DEBSTRIP) -R .note -R .comment $$i); \
+	  fi; \
+	done
+	$(DEBSTRIP) --strip-unneeded -R .note -R .comment \
+	  debian/tmp-lib/lib/*.so*
+	$(DEBSTRIP) --strip-debug debian/tmp-dev/usr/lib/*.a
+
+	# Control files
+	install -d debian/tmp-{lib,dev,run}/DEBIAN
+	cp debian/shlibs debian/tmp-lib/DEBIAN/shlibs
+
+	dpkg-shlibdeps debian/tmp-lib/lib/*.so*
+	dpkg-gencontrol -isp -Pdebian/tmp-lib -plibbz2-1.0
+	rm debian/substvars
+	dpkg-gencontrol -isp -Pdebian/tmp-dev -plibbz2-dev
+#	dpkg-shlibdeps debian/tmp-run/bin/*
+	dpkg-gencontrol -isp -Pdebian/tmp-run -pbzip2
+
+	for i in run dev lib; do \
+	  cp debian/postinst-$$i debian/tmp-$$i/DEBIAN/postinst; \
+	  cp debian/prerm-$$i debian/tmp-$$i/DEBIAN/prerm; \
+	  chmod +x debian/tmp-$$i/DEBIAN/postinst; \
+	  chmod +x debian/tmp-$$i/DEBIAN/prerm; \
+	done
+	cp debian/preinst-run debian/tmp-run/DEBIAN/preinst
+	cp debian/postrm-lib debian/tmp-lib/DEBIAN/postrm
+	chmod +x debian/tmp-run/DEBIAN/preinst debian/tmp-lib/DEBIAN/postrm
+
+	# Fix perms
+	chown -R root.root debian/tmp*
+	chmod -R a+rX-wts,u+w debian/tmp*
+
+	# Buildit
+	dpkg --build debian/tmp-run ..
+	dpkg --build debian/tmp-lib ..
+	dpkg --build debian/tmp-dev ..
+
+
+
+print-version:
+	@@echo "Debian version:          $(DEBVERSION)"
+	@@echo "Upstream version:        $(UPVERSION)"
+
+get-orig-source:
+	$(WGET) -O bzip2_$(UPVERSION).orig.tar.gz \
+	  ftp://sourceware.cygnus.com/pub/bzip2/v100/bzip2-$(UPVERSION).tar.gz
+
+binary: binary-indep binary-arch
+
+.PHONY: build clean binary-indep binary-arch binary print-version \
+	get-orig-source patch unpatch
