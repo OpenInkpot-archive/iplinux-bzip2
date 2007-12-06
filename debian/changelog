@@ -1,3 +1,9 @@
+bzip2 (1.0.3-3.slind1) unstable; urgency=low
+
+  * Fix cross build-dependencies' spelling.
+
+ -- Alexander Shishkin <virtuoso@slind.org>  Thu,  6 Dec 2007 18:31:54 +0300
+
 bzip2 (1.0.3-3.slind0) unstable; urgency=low
 
   * Slind fork.

@@ -3,8 +3,8 @@ Section: core
 Priority: important
 Maintainer: Alexander Shishkin <virtuoso@slind.org>
 Standards-Version: 3.7.2
-XCS-Cross-Host-Build-depends: texinfo
-XCS-Cross-Build-depends: cross-toolchain
+XCS-Cross-Host-Build-Depends: texinfo
+XCS-Cross-Build-Depends: cross-toolchain
 Build-depends: texinfo
 
 Package: libbz2-1.0
