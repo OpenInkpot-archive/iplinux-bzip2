@@ -1,3 +1,9 @@
+bzip2 (1.0.3-3.slind2) unstable; urgency=low
+
+  * Move -dev package to 'libdevel' section.
+
+ -- Alexander Shishkin <virtuoso@slind.org>  Tue, 18 Dec 2007 12:31:46 +0300
+
 bzip2 (1.0.3-3.slind1) unstable; urgency=low
 
   * Fix cross build-dependencies' spelling.
