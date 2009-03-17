@@ -41,6 +41,8 @@ install: build
 	dh_installdirs
 
 	$(MAKE) PREFIX=$(CURDIR)/debian/tmp install
+	mkdir -p $(CURDIR)/debian/tmp/usr
+	mv $(CURDIR)/debian/tmp/include $(CURDIR)/debian/tmp/usr
 
 binary-indep: install
 
