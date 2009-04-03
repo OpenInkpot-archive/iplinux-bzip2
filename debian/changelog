@@ -1,3 +1,9 @@
+bzip2 (1.0.5-2+b1) asimov; urgency=low
+
+  * Rebuild with new toolchain.
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Fri, 03 Apr 2009 18:54:41 +0700
+
 bzip2 (1.0.5-2) asimov; urgency=low
 
   * Oops. bzlib.h moved from /include to /usr/include
